@@ -72,8 +72,8 @@ export ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=3
 export ATB_WORKSPACE_MEM_ALLOC_GLOBAL=1
 
 ## 别名配置
-alias cdm=/usr/local/Ascend/mindie/latest/mindie-service
-alias cdm-start=/usr/local/Ascend/mindie/latest/mindie-service/bin/mindieservice_daemon
+alias cdm='cd /usr/local/Ascend/mindie/latest/mindie-service'
+alias cdm-start='cd /usr/local/Ascend/mindie/latest/mindie-service/bin/mindieservice_daemon'
 "
 
 # 检查是否已经存在这些配置

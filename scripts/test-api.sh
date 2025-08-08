@@ -11,12 +11,13 @@ BASE_URL="http://192.168.1.100:1025"
 DEFAULT_URL="$BASE_URL/v1/chat/completions"
 DEFAULT_MODELS_URL="$BASE_URL/v1/models"
 DEFAULT_TEMP=0.3
-DEFAULT_STREAM=true
+DEFAULT_STREAM=false
 DEFAULT_MESSAGE="写一个 Python 程序，计算 1 到 100 的和"
 
 # 获取模型 ID，并检查是否为空
 get_model() {
-  local model_id=$(curl -s "$DEFAULT_MODELS_URL" | jq -r '.data[0].id')
+  # local model_id=$(curl -s "$DEFAULT_MODELS_URL" | jq -r '.data[0].id')
+  local model_id=$(curl -s "$DEFAULT_MODELS_URL" | grep -o '"id":[^,]*' | head -n1 | sed 's/.*"id":"\([^"]*\)".*/\1/')
 
   if [ -z "$model_id" ] || [ "$model_id" == "null" ]; then
     echo "⚠️  警告: 无法获取模型 ID，请检查 $DEFAULT_MODELS_URL 接口是否正常返回数据" >&2
