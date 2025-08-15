@@ -1,0 +1,1 @@
+curl -X POST "http://192.168.1.100:1025/v1/chat/completions" -H "Content-Type: application/json" -d '{"model":"qwen-7b","messages":[{"role":"user","content":"介绍一下你自己"}],"temperature":0.3,"stream":false}'
