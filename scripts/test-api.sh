@@ -5,7 +5,8 @@
 #########################
 
 # base URL
-BASE_URL="http://192.168.1.100:1025"
+PORT=1025
+BASE_URL="http://192.168.1.46:$PORT"
 
 # 默认配置
 DEFAULT_URL="$BASE_URL/v1/chat/completions"
@@ -107,6 +108,29 @@ while true; do
     esac
 done
 
+# 控制打字机效果的函数
+# 参数：要打印的字符串
+typing_effect() {
+    local text="$1"
+
+    # 使用 `sed` 将 `\n` 转义序列转换为实际的换行符
+    # 这一步是为了确保多余的转义字符被正确解析
+    local formatted_text=$(echo -e "$text")
+
+    # 按字符迭代
+    for ((i=0; i<${#formatted_text}; i++)); do
+        char="${formatted_text:i:1}"
+
+        # 使用 %b 格式符，它可以解释转义序列
+        # 并且为了避免在不同系统上出现乱码，使用 -v 将其作为变量传递
+        printf "%b" "$char"
+
+        # 暂停一小段时间，这里是 0.01 秒
+        sleep 0.01
+    done
+}
+
+
 # 发起 chat 请求
 chat_request() {
     # 如果用户没有指定，则使用默认值
@@ -137,9 +161,33 @@ chat_request() {
 EOF
 )
     # 调用 curl
-    curl -s -X POST "$url" \
-        -H "Content-Type: application/json" \
-        -d "$data"
+    if [ "$stream" == "true" ]; then
+        # 流式输出处理
+        curl -s -X POST "$url" \
+             -H "Content-Type: application/json" \
+             -d "$data" | while IFS= read -r line; do
+                # 过滤空行并检查是否是结束标记
+                if [[ -z "$line" || "$line" =~ ^data:\ \[DONE\] ]]; then
+                    continue
+                fi
+
+                # 使用 grep 和 sed 提取 content 字段
+                local content=$(echo "$line" | grep -o '"content":"[^"]*"' | sed 's/.*"content":"\([^"]*\)".*/\1/')
+                if [ ! -z "$content" ]; then
+                    # 实时打印，-n 选项防止自动换行
+                             # 对提取到的每一块内容应用打字机效果
+                    typing_effect "$content"
+
+                fi
+            done
+        # 流式结束后换行
+        echo ""
+    else
+        # 非流式输出，一次性打印
+        curl -s -X POST "$url" \
+             -H "Content-Type: application/json" \
+             -d "$data" | jq '.choices[0].message.content'
+    fi
 }
 
 # 调用主函数
