@@ -39,9 +39,27 @@ get_model() {
     echo "$model_id"
 }
 
+# 显示帮助信息
+show_help() {
+    echo "用法: $(basename "$0") [选项]"
+    echo ""
+    echo "这是一个用于测试大语言模型API的命令行工具。它支持类似于OpenAI的接口。"
+    echo ""
+    echo "选项:"
+    echo "  -u, --url <URL>           指定聊天补全接口的URL。默认: $DEFAULT_URL"
+    echo "  -m, --model <ID>          指定要使用的模型ID。默认: 自动从 /v1/models 接口获取"
+    echo "  -p, --prompt <文本>         指定用户输入的消息。默认: '$DEFAULT_MESSAGE'"
+    echo "  -t, --temp <值>           指定温度参数（0.0-1.0），控制生成文本的随机性。默认: $DEFAULT_TEMP"
+    echo "  -s, --stream <true|false> 指定是否以流式方式返回结果。默认: $DEFAULT_STREAM"
+    echo "  -h, --help                显示此帮助信息并退出"
+    echo ""
+    echo "示例:"
+    echo "  $(basename "$0") -p '给我一个关于React Hooks的例子'"
+    echo "  $(basename "$0") --model my_custom_model --temp 0.8"
+    echo "  $(basename "$0") --help"
+}
+
 # 解析命令行参数
-# 长选项：url, model, prompt, temp, stream
-# 短选项：u, m, p, t, s
 OPTS=$(getopt -o u:m:p:t:s:h --long url:,model:,prompt:,temp:,stream:,help -n 'chat_request' -- "$@")
 
 if [ $? != 0 ]; then
@@ -75,14 +93,7 @@ while true; do
             shift 2
             ;;
         -h|--help)
-            echo "用法: chat_request.sh [选项]"
-            echo ""
-            echo "  -u, --url <URL>           指定聊天补全接口的URL (默认: $DEFAULT_URL)"
-            echo "  -m, --model <ID>          指定要使用的模型ID (默认: 自动从 /v1/models 获取)"
-            echo "  -p, --prompt <文本>         指定用户输入消息 (默认: '$DEFAULT_MESSAGE')"
-            echo "  -t, --temp <值>           指定温度参数 (默认: $DEFAULT_TEMP)"
-            echo "  -s, --stream <true|false> 指定是否流式返回结果 (默认: $DEFAULT_STREAM)"
-            echo "  -h, --help                显示帮助信息"
+            show_help
             exit 0
             ;;
         --)
