@@ -1,0 +1,20 @@
+{
+    "container_ip": "192.168.1.100",
+    "model_name": "QwQ-32B",
+    "model_path": "/model/qwq_32B",
+    "world_size": 4,
+    "device_ids": [
+        4,
+        5,
+        6,
+        7
+    ],
+    "docker": {
+        "image": "xxxx",
+        "volumes": {
+            "/data/model/qwq_32B_w8a8": "/model/qwq_32B"
+        },
+        "network": "host",
+        "privileged": true
+    }
+}
