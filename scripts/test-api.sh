@@ -12,7 +12,8 @@ BASE_URL="http://192.168.1.46:$PORT"
 DEFAULT_URL="$BASE_URL/v1/chat/completions"
 DEFAULT_MODELS_URL="$BASE_URL/v1/models"
 DEFAULT_TEMP=0.3
-DEFAULT_STREAM=false
+DEFAULT_STREAM=true
+DEFAULT_MAX_TOKENS=256
 DEFAULT_MESSAGE="写一个 Python 程序，计算 1 到 100 的和"
 
 # 定义变量，用于存储解析后的参数
@@ -21,6 +22,7 @@ MODEL=""
 PROMPT=""
 TEMPERATURE=""
 STREAM=""
+MAX_TOKENS=""
 
 # 获取模型 ID，并检查是否为空
 get_model() {
@@ -52,6 +54,7 @@ show_help() {
     echo "  -p, --prompt <文本>         指定用户输入的消息。默认: '$DEFAULT_MESSAGE'"
     echo "  -t, --temp <值>           指定温度参数（0.0-1.0），控制生成文本的随机性。默认: $DEFAULT_TEMP"
     echo "  -s, --stream <true|false> 指定是否以流式方式返回结果。默认: $DEFAULT_STREAM"
+    echo "  -k, --max-tokens <值>     指定生成文本的最大 tokens 数。默认: $DEFAULT_MAX_TOKENS"
     echo "  -h, --help                显示此帮助信息并退出"
     echo ""
     echo "示例:"
@@ -61,7 +64,7 @@ show_help() {
 }
 
 # 解析命令行参数
-OPTS=$(getopt -o u:m:p:t:s:h --long url:,model:,prompt:,temp:,stream:,help -n 'chat_request' -- "$@")
+OPTS=$(getopt -o u:m:p:t:s:k:h --long url:,model:,prompt:,temp:,stream:,max-tokens:,help -n 'chat_request' -- "$@")
 
 if [ $? != 0 ]; then
     echo "⚠️  错误: 参数解析失败。使用 -h 或 --help 查看帮助。" >&2
@@ -93,6 +96,10 @@ while true; do
             STREAM="$2"
             shift 2
             ;;
+        -k|--max-tokens)
+            MAX_TOKENS="$2"
+            shift 2
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -113,23 +120,13 @@ done
 typing_effect() {
     local text="$1"
 
-    # 使用 `sed` 将 `\n` 转义序列转换为实际的换行符
-    # 这一步是为了确保多余的转义字符被正确解析
-    local formatted_text=$(echo -e "$text")
-
-    # 按字符迭代
-    for ((i=0; i<${#formatted_text}; i++)); do
-        char="${formatted_text:i:1}"
-
-        # 使用 %b 格式符，它可以解释转义序列
-        # 并且为了避免在不同系统上出现乱码，使用 -v 将其作为变量传递
+    # 按字符迭代，并使用 %b 格式符解释转义
+    for ((i=0; i<${#text}; i++)); do
+        char="${text:i:1}"
         printf "%b" "$char"
-
-        # 暂停一小段时间，这里是 0.01 秒
         sleep 0.01
     done
 }
-
 
 # 发起 chat 请求
 chat_request() {
@@ -139,12 +136,14 @@ chat_request() {
     local prompt="${PROMPT:-$DEFAULT_MESSAGE}"
     local temperature="${TEMPERATURE:-$DEFAULT_TEMP}"
     local stream="${STREAM:-$DEFAULT_STREAM}"
+    local max_tokens="${MAX_TOKENS:-$DEFAULT_MAX_TOKENS}"
 
     echo "✅ 使用 URL: $url"
     echo "✅ 使用模型: $model"
     echo "✅ 使用提示语: '$prompt'"
     echo "✅ 使用温度: $temperature"
     echo "✅ 使用流式: $stream"
+    echo "✅ 使用最大 tokens: $max_tokens"
 
     local data=$(cat <<EOF
 {
@@ -156,7 +155,8 @@ chat_request() {
         }
     ],
     "temperature": $temperature,
-    "stream": $stream
+    "stream": $stream,
+    "max_tokens": $max_tokens
 }
 EOF
 )
@@ -171,22 +171,25 @@ EOF
                     continue
                 fi
 
-                # 使用 grep 和 sed 提取 content 字段
-                local content=$(echo "$line" | grep -o '"content":"[^"]*"' | sed 's/.*"content":"\([^"]*\)".*/\1/')
+                # 使用 sed 提取并替换 JSON 中的 \n
+                local content=$(echo "$line" | sed -n 's/.*"content":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g')
                 if [ ! -z "$content" ]; then
-                    # 实时打印，-n 选项防止自动换行
-                             # 对提取到的每一块内容应用打字机效果
                     typing_effect "$content"
-
                 fi
             done
         # 流式结束后换行
         echo ""
     else
         # 非流式输出，一次性打印
-        curl -s -X POST "$url" \
-             -H "Content-Type: application/json" \
-             -d "$data" | jq '.choices[0].message.content'
+        local response_content=$(curl -s -X POST "$url" \
+            -H "Content-Type: application/json" \
+            -d "$data")
+            # -d "$data" | jq -r '.choices[0].message.content')
+
+        if [ ! -z "$response_content" ]; then
+            typing_effect "$response_content"
+            echo ""
+        fi
     fi
 }
 
